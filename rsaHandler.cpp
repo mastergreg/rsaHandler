@@ -6,7 +6,7 @@
 
  * Creation Date : 21-11-2011
 
- * Last Modified : Tue 22 Nov 2011 04:33:57 PM EET
+ * Last Modified : Tue 22 Nov 2011 07:07:39 PM EET
 
  * Created By : Greg Liras <gregliras@gmail.com>
 
@@ -33,6 +33,14 @@ rsaHandler::rsaHandler()
   }
   pub_key = RSA_new();
   get_public_RSA_key();
+
+  enc_data_length = 0;
+  orig_data_length = 0;
+
+  pub_remote_key = NULL;
+  encrypted = NULL;
+  decrypted = NULL;
+  pub_remote_key = NULL;
 }
 rsaHandler::~rsaHandler()
 {
@@ -48,30 +56,36 @@ void rsaHandler::set_public_remote_key(RSA *public_remote_key)
   cout << "OK got the key" << endl;
   this->pub_remote_key = public_remote_key;
 }
-unsigned char * rsaHandler::encrypt_data(unsigned char * data)
+string rsaHandler::encrypt_data(unsigned char * data)
 {
   this->orig_data_length = strlen((const char *) data);
-  unsigned char *encrypted =  (unsigned char *)malloc(RSA_size(this->pub_remote_key));
-  this->enc_data_length = RSA_public_encrypt(this->orig_data_length, (unsigned char *) data, encrypted, this->pub_remote_key, RSA_PKCS1_PADDING);
+  if(this->encrypted != NULL)
+  {
+    clear_data_memory();
+  }
+  this->encrypted =  (unsigned char *)malloc(RSA_size(this->pub_remote_key));
+  this->enc_data_length = RSA_public_encrypt(this->orig_data_length, (unsigned char *) data, this->encrypted, this->pub_remote_key, RSA_PKCS1_PADDING);
   if (enc_data_length == -1)
   {
     cout << "RSA encryption failed" << endl;
   }
-  cout << "Encmessage " << enc_data_length <<" Initialmessage " << orig_data_length << endl;
-  return encrypted;
+  return string((const char *)this->encrypted);
 }
-unsigned char * rsaHandler::decrypt_data(unsigned char* data,long enc_data_length,long orig_data_length)
+string rsaHandler::decrypt_data(unsigned char* data,long enc_data_length,long orig_data_length)
 {
   this->orig_data_length = orig_data_length;
   this->enc_data_length = enc_data_length;
-  unsigned char *decrypted =  (unsigned char *)malloc(this->orig_data_length);
-  int n = RSA_private_decrypt(this->enc_data_length, data, decrypted, priv_key, RSA_PKCS1_PADDING);
-  cout << "Message " << orig_data_length <<" chars long " << endl;
+  if(this->decrypted != NULL)
+  {
+    clear_data_memory();
+  }
+  this->decrypted =  (unsigned char *)malloc(this->orig_data_length);
+  int n = RSA_private_decrypt(this->enc_data_length, data, this->decrypted, priv_key, RSA_PKCS1_PADDING);
   if(n == -1)
   {
     cout << "RSA decryption failed " << n << endl;
   }
-  return decrypted;
+  return string((const char *)this->decrypted);
 }
 long rsaHandler::get_enc_data_length()
 {
@@ -87,4 +101,9 @@ void rsaHandler::get_public_RSA_key()
   PEM_write_bio_RSAPublicKey(bio_buffer,priv_key);
   PEM_read_bio_RSAPublicKey(bio_buffer,&pub_key,NULL,NULL);
   BIO_free(bio_buffer);
+}
+void rsaHandler::clear_data_memory()
+{
+  free(encrypted);
+  free(decrypted);
 }
